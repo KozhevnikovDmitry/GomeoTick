@@ -15,15 +15,12 @@ import java.util.GregorianCalendar;
 public class MainActivity extends AppCompatActivity {
 
     private Date startDate;
-    private Button button;
     private TextView statusBar;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main_activity);
-
-        button = findViewById(R.id.testBtn);
         statusBar = findViewById(R.id.status);
     }
 
@@ -40,7 +37,13 @@ public class MainActivity extends AppCompatActivity {
         statusBar.setText(new Date().toString());
     }
 
-    public void onClick(View view) {
+    public void onLeftButtonClick(View view) {
+        Button button = findViewById(R.id.leftBtn);
+        button.setText(R.string.new_label);
+    }
+
+    public void onRightButtonClick(View view) {
+        Button button = findViewById(R.id.rightBtn);
         button.setText(R.string.new_label);
     }
 
