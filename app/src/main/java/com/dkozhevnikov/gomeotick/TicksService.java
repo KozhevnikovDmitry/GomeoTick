@@ -1,24 +1,26 @@
 package com.dkozhevnikov.gomeotick;
 
-import android.app.Service;
+import android.app.IntentService;
 import android.content.Intent;
-import android.os.Binder;
-import android.os.IBinder;
 
-public class TicksService extends Service {
+public class TicksService extends IntentService {
+
     public TicksService() {
-    }
-
-    private final IBinder mBinder = new LocalBinder();
-
-    public class LocalBinder extends Binder {
-        TicksService getService() {
-            return TicksService.this;
-        }
+        super("TicksService");
     }
 
     @Override
-    public IBinder onBind(Intent intent) {
-        return mBinder;
+    protected void onHandleIntent(Intent intent) {
+        // Normally we would do some work here, like download a file.
+        // For our sample, we just sleep for 5 seconds.
+        long endTime = System.currentTimeMillis() + 5*1000;
+        while (System.currentTimeMillis() < endTime) {
+            synchronized (this) {
+                try {
+                    wait(endTime - System.currentTimeMillis());
+                } catch (Exception e) {
+                }
+            }
+        }
     }
 }
