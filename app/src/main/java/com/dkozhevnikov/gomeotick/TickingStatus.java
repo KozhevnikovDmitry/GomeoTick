@@ -6,5 +6,3 @@ public enum TickingStatus {
     Ticking,
     Pause
 }
-
-
