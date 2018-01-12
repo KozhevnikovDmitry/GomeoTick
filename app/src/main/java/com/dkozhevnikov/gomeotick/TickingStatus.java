@@ -2,7 +2,8 @@ package com.dkozhevnikov.gomeotick;
 
 
 public enum TickingStatus {
-    InActive,
+    Inactive,
     Ticking,
     Pause
 }
+

@@ -13,11 +13,84 @@ public class TicksService extends Service {
 
     private static final String TAG = TicksService.class.getSimpleName();
 
-    // Start and end times in milliseconds
-    private long startTime, endTime;
+    private static final int LapDurationMillis = 10 * 1000; //5 * 60 * 1000;
 
-    // Is the service tracking time?
-    private boolean isTimerRunning;
+    private static final int LapCount = 6;
+
+    private long startTime, currentLapStartTime;
+
+    private TickingStatus tickingStatus;
+
+    private int currentLap;
+
+    private int currentLapCount;
+
+    public void start(){
+        startTime = currentLapStartTime = System.currentTimeMillis();
+        tickingStatus = TickingStatus.Ticking;
+        currentLap = 1;
+        currentLapCount = LapCount;
+    }
+
+    public void cancel(){
+        startTime = currentLapStartTime = 0;
+        currentLap = 0;
+        tickingStatus = TickingStatus.Inactive;
+        currentLapCount = 0;
+    }
+
+    public void skip(){
+        currentLapCount--;
+        if(currentLapCount == 0) {
+            cancel();
+        }
+        else {
+            nextLap();
+        }
+    }
+
+    public void nextLap(){
+        tickingStatus = TickingStatus.Ticking;
+        currentLapStartTime = System.currentTimeMillis();
+        currentLap++;
+    }
+
+    public void pause(){
+        tickingStatus = TickingStatus.Pause;
+        currentLapStartTime =0;
+        currentLap++;
+    }
+
+    public AppState getAppState() {
+        long endTime = 0;
+        long lapTime = 0;
+
+        if(tickingStatus == TickingStatus.Ticking){
+            lapTime = System.currentTimeMillis() - currentLapStartTime;
+            if(lapTime >= LapDurationMillis){
+                pause();
+                return getAppState();
+            }
+
+            endTime = currentLapStartTime + (LapCount - currentLap + 1) * LapDurationMillis;
+        }
+
+        if(tickingStatus == TickingStatus.Pause){
+            long restTime =  (LapCount - currentLap + 1) * LapDurationMillis;
+            endTime = System.currentTimeMillis() + restTime;
+        }
+
+        return new AppState(tickingStatus, startTime, endTime, lapTime, currentLap, currentLapCount);
+    }
+
+
+
+
+
+
+
+
+
 
     // Foreground notification id
     private static final int NOTIFICATION_ID = 1;
@@ -37,8 +110,10 @@ public class TicksService extends Service {
             Log.v(TAG, "Creating service");
         }
         startTime = 0;
-        endTime = 0;
-        isTimerRunning = false;
+        tickingStatus = TickingStatus.Inactive;
+        currentLap = 0;
+        currentLapCount = 0;
+        currentLapStartTime = 0;
     }
 
     @Override
@@ -65,50 +140,6 @@ public class TicksService extends Service {
         }
     }
 
-    /**
-     * Starts the timer
-     */
-    public void startTimer() {
-        if (!isTimerRunning) {
-            startTime = System.currentTimeMillis();
-            isTimerRunning = true;
-        }
-        else {
-            Log.e(TAG, "startTimer request for an already running timer");
-        }
-    }
-
-    /**
-     * Stops the timer
-     */
-    public void stopTimer() {
-        if (isTimerRunning) {
-            endTime = System.currentTimeMillis();
-            isTimerRunning = false;
-        }
-        else {
-            Log.e(TAG, "stopTimer request for a timer that isn't running");
-        }
-    }
-
-    /**
-     * @return whether the timer is running
-     */
-    public boolean isTimerRunning() {
-        return isTimerRunning;
-    }
-
-    /**
-     * Returns the  elapsed time
-     *
-     * @return the elapsed time in seconds
-     */
-    public long elapsedTime() {
-        // If the timer is running, the end time will be zero
-        return endTime > startTime ?
-                (endTime - startTime) / 1000 :
-                (System.currentTimeMillis() - startTime) / 1000;
-    }
 
     /**
      * Place the service into the foreground

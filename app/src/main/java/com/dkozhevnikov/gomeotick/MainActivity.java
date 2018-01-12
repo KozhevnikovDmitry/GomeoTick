@@ -14,6 +14,12 @@ import android.widget.Button;
 import android.widget.TextView;
 
 import java.lang.ref.WeakReference;
+import java.text.SimpleDateFormat;
+import java.time.Duration;
+import java.time.Period;
+import java.time.temporal.TemporalAmount;
+import java.util.GregorianCalendar;
+import java.util.TimeZone;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -22,8 +28,11 @@ public class MainActivity extends AppCompatActivity {
     private TicksService timerService;
     private boolean serviceBound;
 
-    private Button timerButton;
-    private TextView timerTextView;
+    private Button leftBtn;
+    private Button rightBtn;
+    private TextView currentTime;
+    private TextView startTime;
+    private TextView endTime;
 
     // Handler to update the UI every second when the timer is running
     private final Handler mUpdateTimeHandler = new UIUpdateHandler(this);
@@ -35,8 +44,11 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main_activity);
 
-        timerButton = (Button)findViewById(R.id.leftBtn);
-        timerTextView = (TextView)findViewById(R.id.currentTime);
+        leftBtn = findViewById(R.id.leftBtn);
+        rightBtn = findViewById(R.id.rightBtn);
+        currentTime = findViewById(R.id.currentTime);
+        startTime = findViewById(R.id.startTime);
+        endTime = findViewById(R.id.endTime);
     }
 
     @Override
@@ -53,10 +65,9 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onStop() {
         super.onStop();
-        updateUIStopRun();
         if (serviceBound) {
             // If a timer is active, foreground the service, otherwise kill the service
-            if (timerService.isTimerRunning()) {
+            if (timerService.getAppState().getTickingStatus() != TickingStatus.Inactive) {
                 timerService.foreground();
             }
             else {
@@ -69,46 +80,99 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void onLeftButtonClick(View v) {
-        if (serviceBound && !timerService.isTimerRunning()) {
-            if (Log.isLoggable(TAG, Log.VERBOSE)) {
-                Log.v(TAG, "Starting timer");
+        if(serviceBound){
+            AppState state = timerService.getAppState();
+            TickingStatus status = state.getTickingStatus();
+
+            if(status == TickingStatus.Inactive){
+                Log("Start");
+                mUpdateTimeHandler.sendEmptyMessage(MSG_UPDATE_TIME);
+                timerService.start();
             }
-            timerService.startTimer();
-            updateUIStartRun();
-        }
-        else if (serviceBound && timerService.isTimerRunning()) {
-            if (Log.isLoggable(TAG, Log.VERBOSE)) {
-                Log.v(TAG, "Stopping timer");
+
+            if(status == TickingStatus.Ticking){
+                Log("Skip lap");
+                timerService.skip();
             }
-            timerService.stopTimer();
-            updateUIStopRun();
+
+            if(status == TickingStatus.Pause){
+                Log("Next lap");
+                timerService.nextLap();
+            }
+            updateUI();
         }
     }
 
-    /**
-     * Updates the UI when a run starts
-     */
-    private void updateUIStartRun() {
-        mUpdateTimeHandler.sendEmptyMessage(MSG_UPDATE_TIME);
-        timerButton.setText("Stop");
-    }
-
-    /**
-     * Updates the UI when a run stops
-     */
-    private void updateUIStopRun() {
-        mUpdateTimeHandler.removeMessages(MSG_UPDATE_TIME);
-        timerButton.setText("Start");
-    }
-
-    /**
-     * Updates the timer readout in the UI; the service must be bound
-     */
-    private void updateUITimer() {
-        if (serviceBound) {
-            timerTextView.setText(timerService.elapsedTime() + " seconds");
+    public void onRightButtonClick(View v) {
+        if(serviceBound){
+            Log("Start");
+            timerService.cancel();
+            mUpdateTimeHandler.removeMessages(MSG_UPDATE_TIME);
+            updateUI();
         }
     }
+
+    private void Log(String msg){
+        if (Log.isLoggable(TAG, Log.VERBOSE)) {
+            Log.v(TAG, msg);
+        }
+    }
+
+
+
+    private void updateUI(){
+        AppState state = timerService.getAppState();
+        TickingStatus status = state.getTickingStatus();
+        rightBtn.setText("Cancel");
+        if(status == TickingStatus.Inactive){
+            leftBtn.setText("Start");
+            currentTime.setText("00:00");
+            currentTime.setEnabled(false);
+            startTime.setText("00:00:00");
+            startTime.setEnabled(false);
+            endTime.setText("00:00:00");
+            endTime.setEnabled(false);
+        }
+
+        if(status == TickingStatus.Ticking){
+            leftBtn.setText("Skip");
+            currentTime.setText(getCurrentTime(state));
+            currentTime.setEnabled(true);
+            startTime.setText(getBoundTime(state.getStartTime()));
+            startTime.setEnabled(true);
+            endTime.setText(getBoundTime(state.getEndTime()));
+            endTime.setEnabled(true);
+        }
+
+        if(status == TickingStatus.Pause){
+            leftBtn.setText("Continue");
+            currentTime.setText("00:00");
+            currentTime.setEnabled(true);
+            startTime.setText(getBoundTime(state.getStartTime()));
+            startTime.setEnabled(true);
+            endTime.setText(getBoundTime(state.getEndTime()));
+            endTime.setEnabled(true);
+        }
+    }
+
+    private String getCurrentTime(AppState state){
+        long min = state.getLapTime() / 1000 / 60;
+        long sec = (state.getLapTime() - min*1000*60) / 1000;
+
+        return String.format("%02d", min) + ":" + String.format("%02d", sec) ;
+    }
+
+    private String getBoundTime(long currentTime){
+        return getStringTime(currentTime, "HH:mm:ss");
+    }
+
+    private String getStringTime(long time, String pattern){
+        GregorianCalendar calendar = new GregorianCalendar(TimeZone.getDefault());
+        calendar.setTimeInMillis(time);
+        SimpleDateFormat format = new SimpleDateFormat(pattern);
+        return format.format(calendar.getTime());
+    }
+
 
     /**
      * Callback for service binding, passed to bindService()
@@ -126,9 +190,7 @@ public class MainActivity extends AppCompatActivity {
             // Ensure the service is not in the foreground when bound
             timerService.background();
             // Update the UI if the service is already running the timer
-            if (timerService.isTimerRunning()) {
-                updateUIStartRun();
-            }
+            updateUI();
         }
 
         @Override
@@ -159,7 +221,7 @@ public class MainActivity extends AppCompatActivity {
                 if (Log.isLoggable(TAG, Log.VERBOSE)) {
                     Log.v(TAG, "updating time");
                 }
-                activity.get().updateUITimer();
+                activity.get().updateUI();
                 sendEmptyMessageDelayed(MSG_UPDATE_TIME, UPDATE_RATE_MS);
             }
         }

@@ -1,5 +1,4 @@
 <resources>
     <string name="app_name">GomeoTick</string>
-    <string name="title_activity_main">MainActivity</string>
-    <string name="new_label">Pressed</string>
+    <string name="title_activity_main">GomeoTick</string>
 </resources>
