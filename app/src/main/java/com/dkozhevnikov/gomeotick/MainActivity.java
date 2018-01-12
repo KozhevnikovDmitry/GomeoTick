@@ -213,7 +213,7 @@ public class MainActivity extends AppCompatActivity {
      */
     static class UIUpdateHandler extends Handler {
 
-        private final static int UPDATE_RATE_MS = 1000;
+        private final static int UPDATE_RATE_MS = 500;
         private final WeakReference<MainActivity> activity;
 
         UIUpdateHandler(MainActivity activity) {

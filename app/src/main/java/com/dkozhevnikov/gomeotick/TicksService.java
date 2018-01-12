@@ -3,9 +3,14 @@ package com.dkozhevnikov.gomeotick;
 import android.app.Notification;
 import android.app.PendingIntent;
 import android.app.Service;
+import android.content.Context;
 import android.content.Intent;
+import android.media.Ringtone;
+import android.media.RingtoneManager;
+import android.net.Uri;
 import android.os.Binder;
 import android.os.IBinder;
+import android.os.Vibrator;
 import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 
@@ -30,6 +35,10 @@ public class TicksService extends Service {
 
     private Timer timer;
 
+    private Ringtone lapRigntone;
+
+    private Vibrator vibrator;
+
     public void start(){
         startTime = currentLapStartTime = System.currentTimeMillis();
         tickingStatus = TickingStatus.Ticking;
@@ -48,7 +57,7 @@ public class TicksService extends Service {
 
     public void skip(){
         currentLapCount--;
-        if(currentLapCount == 0) {
+        if(currentLapCount < currentLap || currentLapCount == 0) {
             cancel();
         }
         else {
@@ -57,13 +66,24 @@ public class TicksService extends Service {
     }
 
     public void nextLap(){
+        lapRigntone.stop();
+        vibrator.cancel();
         tickingStatus = TickingStatus.Ticking;
         currentLapStartTime = System.currentTimeMillis();
         currentLap++;
+
+        if(currentLap > currentLapCount){
+            cancel();
+            return;
+        }
+
         ScheduleNextLap();
     }
 
     public void pause(){
+        lapRigntone.play();
+        long[] pattern = { 0, 200, 0 }; //0 to start now, 200 to vibrate 200 ms, 0 to sleep for 0 ms.
+        vibrator.vibrate(pattern, 0);
         tickingStatus = TickingStatus.Pause;
         currentLapStartTime = 0;
         CancelTimer();
@@ -124,7 +144,9 @@ public class TicksService extends Service {
         if (Log.isLoggable(TAG, Log.VERBOSE)) {
             Log.v(TAG, "Creating service");
         }
-
+        Uri notification = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE);
+        lapRigntone = RingtoneManager.getRingtone(getApplicationContext(), notification);
+        vibrator = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
         startTime = 0;
         tickingStatus = TickingStatus.Inactive;
         currentLap = 0;
