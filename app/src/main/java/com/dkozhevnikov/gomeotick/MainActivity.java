@@ -15,9 +15,6 @@ import android.widget.TextView;
 
 import java.lang.ref.WeakReference;
 import java.text.SimpleDateFormat;
-import java.time.Duration;
-import java.time.Period;
-import java.time.temporal.TemporalAmount;
 import java.util.GregorianCalendar;
 import java.util.TimeZone;
 
@@ -31,6 +28,7 @@ public class MainActivity extends AppCompatActivity {
     private Button leftBtn;
     private Button rightBtn;
     private TextView currentTime;
+    private TextView laps;
     private TextView startTime;
     private TextView endTime;
 
@@ -47,6 +45,7 @@ public class MainActivity extends AppCompatActivity {
         leftBtn = findViewById(R.id.leftBtn);
         rightBtn = findViewById(R.id.rightBtn);
         currentTime = findViewById(R.id.currentTime);
+        laps = findViewById(R.id.laps);
         startTime = findViewById(R.id.startTime);
         endTime = findViewById(R.id.endTime);
     }
@@ -128,6 +127,8 @@ public class MainActivity extends AppCompatActivity {
             leftBtn.setText("Start");
             currentTime.setText("00:00");
             currentTime.setEnabled(false);
+            laps.setText("0/0");
+            laps.setEnabled(false);
             startTime.setText("00:00:00");
             startTime.setEnabled(false);
             endTime.setText("00:00:00");
@@ -138,6 +139,8 @@ public class MainActivity extends AppCompatActivity {
             leftBtn.setText("Skip");
             currentTime.setText(getCurrentTime(state));
             currentTime.setEnabled(true);
+            laps.setText(state.getCurrentLap()+"/"+state.getLapCount());
+            laps.setEnabled(true);
             startTime.setText(getBoundTime(state.getStartTime()));
             startTime.setEnabled(true);
             endTime.setText(getBoundTime(state.getEndTime()));
@@ -147,6 +150,8 @@ public class MainActivity extends AppCompatActivity {
         if(status == TickingStatus.Pause){
             leftBtn.setText("Continue");
             currentTime.setText("00:00");
+            currentTime.setEnabled(true);
+            laps.setText(state.getCurrentLap()+"/"+state.getLapCount());
             currentTime.setEnabled(true);
             startTime.setText(getBoundTime(state.getStartTime()));
             startTime.setEnabled(true);

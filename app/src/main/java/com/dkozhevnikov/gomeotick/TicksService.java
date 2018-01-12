@@ -9,11 +9,14 @@ import android.os.IBinder;
 import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 
+import java.util.Timer;
+import java.util.TimerTask;
+
 public class TicksService extends Service {
 
     private static final String TAG = TicksService.class.getSimpleName();
 
-    private static final int LapDurationMillis = 10 * 1000; //5 * 60 * 1000;
+    private static final int LapDurationMillis = 5 * 60 * 1000;
 
     private static final int LapCount = 6;
 
@@ -25,11 +28,14 @@ public class TicksService extends Service {
 
     private int currentLapCount;
 
+    private Timer timer;
+
     public void start(){
         startTime = currentLapStartTime = System.currentTimeMillis();
         tickingStatus = TickingStatus.Ticking;
         currentLap = 1;
         currentLapCount = LapCount;
+        ScheduleNextLap();
     }
 
     public void cancel(){
@@ -37,6 +43,7 @@ public class TicksService extends Service {
         currentLap = 0;
         tickingStatus = TickingStatus.Inactive;
         currentLapCount = 0;
+        CancelTimer();
     }
 
     public void skip(){
@@ -53,12 +60,25 @@ public class TicksService extends Service {
         tickingStatus = TickingStatus.Ticking;
         currentLapStartTime = System.currentTimeMillis();
         currentLap++;
+        ScheduleNextLap();
     }
 
     public void pause(){
         tickingStatus = TickingStatus.Pause;
-        currentLapStartTime =0;
-        currentLap++;
+        currentLapStartTime = 0;
+        CancelTimer();
+    }
+
+    private void CancelTimer(){
+        if(timer != null) {
+            timer.cancel();
+        }
+    }
+
+    private void ScheduleNextLap(){
+        CancelTimer();
+        timer = new Timer();
+        timer.schedule(new PauseTask(this), LapDurationMillis);
     }
 
     public AppState getAppState() {
@@ -67,16 +87,11 @@ public class TicksService extends Service {
 
         if(tickingStatus == TickingStatus.Ticking){
             lapTime = System.currentTimeMillis() - currentLapStartTime;
-            if(lapTime >= LapDurationMillis){
-                pause();
-                return getAppState();
-            }
-
             endTime = currentLapStartTime + (LapCount - currentLap + 1) * LapDurationMillis;
         }
 
         if(tickingStatus == TickingStatus.Pause){
-            long restTime =  (LapCount - currentLap + 1) * LapDurationMillis;
+            long restTime =  (LapCount - currentLap) * LapDurationMillis;
             endTime = System.currentTimeMillis() + restTime;
         }
 
@@ -109,6 +124,7 @@ public class TicksService extends Service {
         if (Log.isLoggable(TAG, Log.VERBOSE)) {
             Log.v(TAG, "Creating service");
         }
+
         startTime = 0;
         tickingStatus = TickingStatus.Inactive;
         currentLap = 0;
@@ -173,5 +189,19 @@ public class TicksService extends Service {
         builder.setContentIntent(resultPendingIntent);
 
         return builder.build();
+    }
+}
+
+class PauseTask extends TimerTask {
+
+    private final TicksService ticksService;
+
+    PauseTask(TicksService ticksService){
+        this.ticksService = ticksService;
+    }
+
+    @Override
+    public void run() {
+        ticksService.pause();
     }
 }
